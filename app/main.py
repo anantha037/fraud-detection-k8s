@@ -101,7 +101,7 @@ class PredictionResponse(BaseModel):
     fraud_probability: float
     is_fraud: bool
     risk_level: str
-    shap_top_features: List[Dict[str, float]]
+    shap_top_features: List[Dict[str, Union[str, float]]]
 
 def preprocess_features(raw_features: dict) -> np.ndarray:
     # We will build a clean dict
