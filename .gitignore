@@ -6,3 +6,4 @@ mlruns/
 *.html
 .env
 mlflow.db 
+requirements_freeze.txt 
