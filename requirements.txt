@@ -1,0 +1,14 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+xgboost
+scikit-learn==1.6.1
+pandas==2.2.3
+numpy==2.2.3
+joblib==1.4.2
+shap
+pydantic==2.12.5
+prometheus-fastapi-instrumentator
+psycopg2-binary
+redis
+kafka-python
+requests==2.31.0
