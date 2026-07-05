@@ -1,0 +1,11 @@
+# ConfigMap for fraud detection FastAPI service environment variables
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fraud-detection-config
+  namespace: default
+data:
+  MODEL_PATH: "model/fraud_model.pkl"
+  PORT: "8000"
+  NUM_CLASSES: "2"
+  LOG_LEVEL: "INFO"
