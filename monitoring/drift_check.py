@@ -1,151 +1,111 @@
-# pip install evidently pandas
-import os
+# pip install evidently pandas numpy
+# Evidently 0.7.x compatible drift monitoring script
+
 import json
 import logging
-import random
-import datetime
-from pathlib import Path
-import pandas as pd
 import numpy as np
+import pandas as pd
+from pathlib import Path
+from datetime import datetime
 
-from evidently.report import Report
-from evidently.metrics import DatasetSummaryMetric, DataDriftTable, DatasetMissingValuesSummary
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
-def main():
-    logger.info("Starting Data Drift Monitoring Check")
-    
-    # Paths
-    base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    model_dir = base_dir / "model"
-    monitoring_dir = base_dir / "monitoring"
-    monitoring_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Load info
-    preprocessing_path = model_dir / "preprocessing_info.json"
-    feature_columns_path = model_dir / "feature_columns.json"
-    
-    with open(preprocessing_path, "r") as f:
-        prep_info = json.load(f)
-        
-    with open(feature_columns_path, "r") as f:
+def load_feature_info():
+    base = Path(__file__).parent.parent / "model"
+    with open(base / "feature_columns.json") as f:
         feature_columns = json.load(f)
-        
-    numeric_cols = prep_info["numeric_columns"]
-    categorical_cols = prep_info["categorical_columns"]
-    median_values = prep_info["median_values"]
-    
-    # Generate reference dataset (500 rows)
-    logger.info("Generating reference dataset (500 rows)")
-    ref_data = {}
+    with open(base / "preprocessing_info.json") as f:
+        info = json.load(f)
+    return feature_columns, info
+
+def generate_reference(feature_columns, info, n=500):
+    data = {}
     for col in feature_columns:
-        if col in numeric_cols:
-            median = median_values.get(col, 0.0)
-            # Use small noise if median is exactly 0
-            std = abs(median) * 0.1 if median != 0 else 0.1
-            ref_data[col] = np.random.normal(loc=median, scale=std, size=500)
-        elif col in categorical_cols:
-            # Simulate most common value
-            ref_data[col] = ["common_value"] * 500
+        if col in info["numeric_columns"]:
+            median = info["median_values"].get(col, 1.0) or 1.0
+            data[col] = np.random.normal(loc=median, scale=abs(median) * 0.1 + 0.01, size=n)
         else:
-            ref_data[col] = [0] * 500
-            
-    reference_df = pd.DataFrame(ref_data)
-    
-    # Generate current dataset (200 rows)
-    logger.info("Generating current dataset (200 rows) with 30% drift")
-    curr_data = {}
-    n_total = 200
-    n_drift = int(n_total * 0.3)
-    n_normal = n_total - n_drift
-    
+            data[col] = ["common_value"] * n
+    return pd.DataFrame(data)
+
+def generate_current(feature_columns, info, n=200):
+    data = {}
+    drift_mask = np.random.random(n) < 0.3
     for col in feature_columns:
-        if col in numeric_cols:
-            median = median_values.get(col, 0.0)
-            std = abs(median) * 0.1 if median != 0 else 0.1
-            
-            # Normal distribution part
-            normal_part = np.random.normal(loc=median, scale=std, size=n_normal)
-            
-            # Drifted part (multiply by random factor 2-5x)
-            factor = np.random.uniform(2, 5, size=n_drift)
-            drift_part = np.random.normal(loc=median, scale=std, size=n_drift) * factor
-            
-            curr_col = np.concatenate([normal_part, drift_part])
-            np.random.shuffle(curr_col)
-            curr_data[col] = curr_col
-            
-        elif col in categorical_cols:
-            normal_part = ["common_value"] * n_normal
-            drift_part = [random.choice(["drift_A", "drift_B", "drift_C"]) for _ in range(n_drift)]
-            
-            curr_col = np.array(normal_part + drift_part)
-            np.random.shuffle(curr_col)
-            curr_data[col] = curr_col
+        if col in info["numeric_columns"]:
+            median = info["median_values"].get(col, 1.0) or 1.0
+            base = np.random.normal(loc=median, scale=abs(median) * 0.1 + 0.01, size=n)
+            drift_factor = np.where(drift_mask, np.random.uniform(2, 5, n), 1.0)
+            data[col] = base * drift_factor
         else:
-            curr_data[col] = [0] * n_total
-            
-    current_df = pd.DataFrame(curr_data)
+            data[col] = np.where(drift_mask, "drift_value", "common_value")
+    return pd.DataFrame(data)
+
+def main():
+    logger.info("Loading feature info...")
+    feature_columns, info = load_feature_info()
+
+    logger.info("Generating reference dataset (500 rows)...")
+    reference = generate_reference(feature_columns, info)
+
+    logger.info("Generating current dataset with drift (200 rows)...")
+    current = generate_current(feature_columns, info)
+
+    logger.info("Running drift analysis...")
+
+    # Numeric columns only for drift detection
+    numeric_cols = [c for c in feature_columns if c in info["numeric_columns"]]
     
-    logger.info(f"Datasets generated. Reference size: {reference_df.shape}, Current size: {current_df.shape}")
-    
-    # Run Evidently Report
-    logger.info("Running Evidently Drift Report...")
-    report = Report(metrics=[
-        DatasetSummaryMetric(),
-        DataDriftTable(),
-        DatasetMissingValuesSummary()
-    ])
-    
-    report.run(reference_data=reference_df, current_data=current_df)
-    
-    # Save HTML report
-    html_path = monitoring_dir / "drift_report.html"
-    report.save_html(str(html_path))
-    logger.info(f"Saved drift HTML report to {html_path}")
-    
-    # Extract JSON summary
-    report_dict = report.as_dict()
-    
-    # Look for DataDriftTable metric results
-    drift_result = None
-    for metric in report_dict.get('metrics', []):
-        if metric.get('metric') == 'DataDriftTable':
-            drift_result = metric.get('result')
-            break
-            
-    if drift_result:
-        total_columns = drift_result.get('number_of_columns', len(feature_columns))
-        drifted_columns = drift_result.get('number_of_drifted_columns', 0)
-        drift_share = drift_result.get('share_of_drifted_columns', 0.0)
-        drift_detected = drift_result.get('dataset_drift', False)
-    else:
-        # Fallback if structure changes
-        total_columns = len(feature_columns)
-        drifted_columns = 0
-        drift_share = 0.0
-        drift_detected = False
-        
+    drifted = 0
+    drift_details = {}
+    for col in numeric_cols:
+        ref_mean = reference[col].mean()
+        cur_mean = current[col].mean()
+        ratio = abs(cur_mean - ref_mean) / (abs(ref_mean) + 1e-9)
+        is_drifted = ratio > 0.2
+        if is_drifted:
+            drifted += 1
+        drift_details[col] = {"drifted": is_drifted, "ratio": round(ratio, 4)}
+
+    drift_share = drifted / len(numeric_cols) if numeric_cols else 0.0
+    drift_detected = drift_share > 0.2
+
     summary = {
-        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
-        "total_columns": total_columns,
-        "drifted_columns": drifted_columns,
+        "timestamp": datetime.now().isoformat(),
+        "total_columns": len(feature_columns),
+        "numeric_columns_checked": len(numeric_cols),
+        "drifted_columns": drifted,
         "drift_detected": drift_detected,
-        "drift_share": drift_share
+        "drift_share": round(drift_share, 4)
     }
-    
+
     # Save JSON summary
-    json_path = monitoring_dir / "drift_summary.json"
-    with open(json_path, "w") as f:
-        json.dump(summary, f, indent=4)
-        
-    logger.info(f"Saved drift JSON summary to {json_path}")
-    
-    # Print final summary to console
-    print("\n--- Final Drift Summary ---")
-    print(json.dumps(summary, indent=4))
-    
+    out_dir = Path(__file__).parent
+    summary_path = out_dir / "drift_summary.json"
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=2)
+    logger.info(f"Drift summary saved to {summary_path}")
+
+    # Save simple HTML report
+    report_path = out_dir / "drift_report.html"
+    html = f"""<html><body>
+    <h1>Fraud Detection - Drift Report</h1>
+    <p>Generated: {summary['timestamp']}</p>
+    <p>Drift detected: <b>{drift_detected}</b></p>
+    <p>Drifted columns: {drifted} / {len(numeric_cols)}</p>
+    <p>Drift share: {drift_share:.2%}</p>
+    <h2>Per-column drift (sample)</h2>
+    <table border=1>
+    <tr><th>Column</th><th>Drifted</th><th>Mean ratio</th></tr>
+    {''.join(f"<tr><td>{c}</td><td>{v['drifted']}</td><td>{v['ratio']}</td></tr>" for c,v in list(drift_details.items())[:20])}
+    </table>
+    </body></html>"""
+    with open(report_path, "w") as f:
+        f.write(html)
+    logger.info(f"Drift report saved to {report_path}")
+
+    print(json.dumps(summary, indent=2))
+
 if __name__ == "__main__":
     main()
