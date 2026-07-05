@@ -3,7 +3,7 @@ __pycache__/
 *.pkl
 *.csv
 mlruns/
-*.html
+model/shap_summary.png
 .env
-mlflow.db 
-requirements_freeze.txt 
+requirements_freeze.txt
+mlflow.db
