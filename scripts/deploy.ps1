@@ -37,8 +37,8 @@ try {
 
     # 5. Install Kafka via Helm if not already installed
     Write-Host "Checking if Kafka is installed..."
-    $kafkaStatus = helm status kafka 2>&1 | Out-String
-    if ($kafkaStatus -match "STATUS: deployed" -or $kafkaStatus -match "STATUS: pending") {
+    $releaseStatus = helm status kafka 2>&1
+    if ($LASTEXITCODE -eq 0) {
         Write-Host "Kafka already installed"
     } else {
         Write-Host "Installing Kafka via Helm..."
@@ -48,8 +48,8 @@ try {
 
     # 6. Install Redis via Helm if not already installed
     Write-Host "Checking if Redis is installed..."
-    $redisStatus = helm status redis 2>&1 | Out-String
-    if ($redisStatus -match "STATUS: deployed" -or $redisStatus -match "STATUS: pending") {
+    $releaseStatus = helm status redis 2>&1
+    if ($LASTEXITCODE -eq 0) {
         Write-Host "Redis already installed"
     } else {
         Write-Host "Installing Redis via Helm..."
@@ -59,8 +59,8 @@ try {
 
     # 7. Install PostgreSQL via Helm if not already installed
     Write-Host "Checking if PostgreSQL is installed..."
-    $pgStatus = helm status postgresql 2>&1 | Out-String
-    if ($pgStatus -match "STATUS: deployed" -or $pgStatus -match "STATUS: pending") {
+    $releaseStatus = helm status postgresql 2>&1
+    if ($LASTEXITCODE -eq 0) {
         Write-Host "PostgreSQL already installed"
     } else {
         Write-Host "Installing PostgreSQL via Helm..."
