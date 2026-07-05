@@ -37,8 +37,11 @@ try {
 
     # 5. Install Kafka via Helm if not already installed
     Write-Host "Checking if Kafka is installed..."
+    $ErrorActionPreference = "Continue"
     $releaseStatus = helm status kafka 2>&1
-    if ($LASTEXITCODE -eq 0) {
+    $kafkaExitCode = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($kafkaExitCode -eq 0) {
         Write-Host "Kafka already installed"
     } else {
         Write-Host "Installing Kafka via Helm..."
@@ -48,8 +51,11 @@ try {
 
     # 6. Install Redis via Helm if not already installed
     Write-Host "Checking if Redis is installed..."
+    $ErrorActionPreference = "Continue"
     $releaseStatus = helm status redis 2>&1
-    if ($LASTEXITCODE -eq 0) {
+    $redisExitCode = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($redisExitCode -eq 0) {
         Write-Host "Redis already installed"
     } else {
         Write-Host "Installing Redis via Helm..."
@@ -59,8 +65,11 @@ try {
 
     # 7. Install PostgreSQL via Helm if not already installed
     Write-Host "Checking if PostgreSQL is installed..."
+    $ErrorActionPreference = "Continue"
     $releaseStatus = helm status postgresql 2>&1
-    if ($LASTEXITCODE -eq 0) {
+    $pgExitCode = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($pgExitCode -eq 0) {
         Write-Host "PostgreSQL already installed"
     } else {
         Write-Host "Installing PostgreSQL via Helm..."
