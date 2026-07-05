@@ -54,6 +54,8 @@ class MetricsContainer:
 
 app_metrics = MetricsContainer()
 
+instrumentator = Instrumentator()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model, feature_columns, label_encoders, preprocessing_info, explainer, model_loaded
@@ -76,6 +78,8 @@ async def lifespan(app: FastAPI):
         
         model_loaded = True
         logger.info("Model artifacts loaded successfully.")
+        
+        instrumentator.expose(app)
     except Exception as e:
         logger.error(f"Failed to load model artifacts: {e}")
         model_loaded = False
@@ -88,7 +92,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Fraud Detection API", lifespan=lifespan)
 
 # Prometheus metrics
-Instrumentator().instrument(app).expose(app)
+instrumentator.instrument(app)
 
 # Pydantic models
 class TransactionInput(BaseModel):
