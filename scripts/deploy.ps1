@@ -35,18 +35,20 @@ try {
     helm repo update
     if ($LASTEXITCODE -ne 0) { throw "Failed to add/update Helm repos" }
 
-    # 5. Install Kafka via Helm if not already installed
+    # 5. Deploy Kafka using kubectl
     Write-Host "Checking if Kafka is installed..."
     $ErrorActionPreference = "Continue"
-    $releaseStatus = helm status kafka 2>&1
+    kubectl get pod kafka 2>&1 | Out-Null
     $kafkaExitCode = $LASTEXITCODE
     $ErrorActionPreference = "Stop"
     if ($kafkaExitCode -eq 0) {
-        Write-Host "Kafka already installed"
+        Write-Host "Kafka already running"
     } else {
-        Write-Host "Installing Kafka via Helm..."
-        helm install kafka bitnami/kafka -n default --set replicaCount=1 --set controller.replicaCount=1 --set broker.replicaCount=0 --set persistence.enabled=false --set kraft.enabled=true
-        if ($LASTEXITCODE -ne 0) { throw "Failed to install Kafka" }
+        Write-Host "Starting Kafka..."
+        kubectl run kafka --image=apache/kafka:3.7.0 --restart=Never --env="KAFKA_NODE_ID=1" --env="KAFKA_PROCESS_ROLES=broker,controller" --env="KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093" --env="KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092" --env="KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093" --env="KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER" --env="KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT" --env="KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1" --port=9092
+        if ($LASTEXITCODE -ne 0) { throw "Failed to start Kafka" }
+        kubectl expose pod kafka --port=9092 --name=kafka
+        if ($LASTEXITCODE -ne 0) { throw "Failed to expose Kafka" }
     }
 
     # 6. Install Redis via Helm if not already installed
@@ -63,18 +65,20 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Failed to install Redis" }
     }
 
-    # 7. Install PostgreSQL via Helm if not already installed
+    # 7. Deploy PostgreSQL using kubectl
     Write-Host "Checking if PostgreSQL is installed..."
     $ErrorActionPreference = "Continue"
-    $releaseStatus = helm status postgresql 2>&1
+    kubectl get pod postgresql 2>&1 | Out-Null
     $pgExitCode = $LASTEXITCODE
     $ErrorActionPreference = "Stop"
     if ($pgExitCode -eq 0) {
-        Write-Host "PostgreSQL already installed"
+        Write-Host "PostgreSQL already running"
     } else {
-        Write-Host "Installing PostgreSQL via Helm..."
-        helm install postgresql bitnami/postgresql -n default --set auth.postgresPassword=postgres --set auth.database=fraud_db --set primary.persistence.enabled=false
-        if ($LASTEXITCODE -ne 0) { throw "Failed to install PostgreSQL" }
+        Write-Host "Starting PostgreSQL..."
+        kubectl run postgresql --image=postgres:16-alpine --restart=Never --env="POSTGRES_PASSWORD=postgres" --env="POSTGRES_DB=fraud_db" --port=5432
+        if ($LASTEXITCODE -ne 0) { throw "Failed to start PostgreSQL" }
+        kubectl expose pod postgresql --port=5432 --name=postgresql
+        if ($LASTEXITCODE -ne 0) { throw "Failed to expose PostgreSQL" }
     }
 
     # 8. Apply all Kubernetes manifests in order
