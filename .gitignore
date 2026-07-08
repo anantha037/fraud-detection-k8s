@@ -7,3 +7,5 @@ model/shap_summary.png
 .env
 requirements_freeze.txt
 mlflow.db
+load_test/load_test_report2.html
+load_test/load_test_report3.html

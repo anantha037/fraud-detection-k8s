@@ -44,11 +44,14 @@ User → Locust Load Test → K8s NodePort Service (port 30080)
 
 During concurrent load testing, the Horizontal Pod Autoscaler successfully demonstrated resilient scaling capabilities:
 - **10 concurrent users** generated continuous transaction requests.
-- **CPU spiked to 101%**, successfully triggering the autoscaling threshold.
-- **HPA scaled** the deployment from 1 to 2 replicas automatically to handle the load.
+- **CPU spiked to 151%**, successfully triggering the autoscaling threshold.
+- **HPA scaled** the deployment from 1 to 3 replicas automatically to handle the load.
 - **p50 latency:** 6.1s (This is heavily CPU-bound by the real-time SHAP inference calculation without a GPU).
 - **0% failure rate** on health checks throughout the event.
 > *Note: Request latency is intentionally high in this architecture due to prioritizing per-request SHAP explainability computation exclusively on the CPU.*
+
+![HPA Scaling Proof](load_test/test_results.png)
+
 
 ## Project Structure
 
