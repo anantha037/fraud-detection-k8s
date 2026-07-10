@@ -30,8 +30,10 @@ try {
     Write-Host "Image loaded into minikube"
 
     # 4. Add Helm repos and update
-    Write-Host "Adding bitnami Helm repository and updating..."
+    Write-Host "Adding Helm repositories and updating..."
     helm repo add bitnami https://charts.bitnami.com/bitnami
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo add grafana https://grafana.github.io/helm-charts
     helm repo update
     if ($LASTEXITCODE -ne 0) { throw "Failed to add/update Helm repos" }
 
@@ -79,6 +81,36 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Failed to start PostgreSQL" }
         kubectl expose pod postgresql --port=5432 --name=postgresql
         if ($LASTEXITCODE -ne 0) { throw "Failed to expose PostgreSQL" }
+    }
+
+    # Install Prometheus via Helm if not already installed
+    Write-Host "Checking if Prometheus is installed..."
+    $ErrorActionPreference = "Continue"
+    $releaseStatus = helm status prometheus 2>&1
+    $promExitCode = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($promExitCode -eq 0) {
+        Write-Host "Prometheus already installed"
+    } else {
+        Write-Host "Installing Prometheus via Helm..."
+        helm install prometheus prometheus-community/prometheus -n default --set server.persistentVolume.enabled=false --set alertmanager.enabled=false --set prometheus-pushgateway.enabled=false --set server.service.type=NodePort --set server.service.nodePort=30090
+        if ($LASTEXITCODE -ne 0) { throw "Failed to install Prometheus" }
+        Write-Host "Prometheus installed"
+    }
+
+    # Install Grafana via Helm if not already installed
+    Write-Host "Checking if Grafana is installed..."
+    $ErrorActionPreference = "Continue"
+    $releaseStatus = helm status grafana 2>&1
+    $grafExitCode = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($grafExitCode -eq 0) {
+        Write-Host "Grafana already installed"
+    } else {
+        Write-Host "Installing Grafana via Helm..."
+        helm install grafana grafana/grafana -n default --set persistence.enabled=false --set service.type=NodePort --set service.nodePort=30030 --set adminPassword=admin123
+        if ($LASTEXITCODE -ne 0) { throw "Failed to install Grafana" }
+        Write-Host "Grafana installed"
     }
 
     # 8. Apply all Kubernetes manifests in order
