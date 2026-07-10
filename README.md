@@ -1,6 +1,29 @@
-# Real-Time Fraud Detection on Kubernetes
+# Real-Time Fraud Detection MLOps Platform on Kubernetes
 
-A production-grade ML serving pipeline combining an optimized XGBoost fraud detection model, real-time Kafka streaming, and Kubernetes orchestration with Horizontal Pod Autoscaling. Deployed locally on Minikube with full Prometheus + Grafana observability. Built entirely on an Intel i5-8250U with 8GB RAM and no GPU.
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-ML%20Serving-green)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-HPA-blue)
+![Docker](https://img.shields.io/badge/Docker-Containerized-blue)
+![MLflow](https://img.shields.io/badge/MLflow-Tracking-orange)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+A production-style end-to-end MLOps platform for detecting fraudulent financial transactions in real time.
+
+The system combines an optimized XGBoost model, FastAPI inference serving, Kafka-based event streaming, Redis caching, PostgreSQL persistence, Prometheus/Grafana observability, MLflow experiment tracking, and Kubernetes autoscaling.
+
+Built and deployed completely locally on Minikube using an Intel i5 CPU-only machine, demonstrating cloud-native ML engineering practices under real hardware constraints.
+
+## Highlights
+
+- Real-time fraud prediction API using FastAPI + XGBoost
+- Event-driven transaction pipeline with Apache Kafka
+- Kubernetes deployment with Horizontal Pod Autoscaling
+- Prometheus + Grafana production monitoring
+- MLflow experiment tracking
+- Redis caching layer
+- PostgreSQL prediction audit storage
+- Data drift monitoring pipeline
+- SHAP-based model explainability
 
 ## Architecture
 
